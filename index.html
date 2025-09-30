@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>한국 무역현황 - 시설별 수출입 데이터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-blue-700 text-white p-4 text-center text-xl font-bold">
+    한국 무역현황 - 시설별 수출입 데이터
+  </header>
+
+  <!-- Controls -->
+  <div class="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+    <div>
+      <label class="font-semibold mr-2">종류 선택:</label>
+      <select id="facilityType" class="border p-2 rounded">
+        <option value="전체">전체</option>
+        <option value="항구">항구</option>
+        <option value="공항">공항</option>
+        <option value="세관">세관</option>
+        <option value="공항항구">공항항구</option>
+      </select>
+    </div>
+    <div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="border p-2 rounded"/>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <main id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+    <!-- JS에서 카드 생성 -->
+  </main>
+
+  <script>
+    let facilityData = [
+      { 이름: "부산항", 종류: "항구", 수출금액: 5140310, 수입금액: 3605241, 무역수지: 1535069, 링크: "https://unipass.customs.go.kr" },
+      { 이름: "김포공항", 종류: "공항", 수출금액: 3731834, 수입금액: 3655406, 무역수지: 76429, 링크: "https://unipass.customs.go.kr" },
+      { 이름: "포항항", 종류: "공항항구", 수출금액: 143024, 수입금액: 229018, 무역수지: -85993, 링크: "https://unipass.customs.go.kr" }
+    ];
+
+    function renderCards() {
+      const container = document.getElementById("cardsContainer");
+      container.innerHTML = "";
+      const selected = document.getElementById("facilityType").value;
+
+      facilityData
+        .filter(f => selected === "전체" || f.종류 === selected)
+        .forEach(facility => {
+          const bgColor = facility.무역수지 >= 0 ? "bg-blue-200" : "bg-red-200";
+          const card = document.createElement("div");
+          card.className = `${bgColor} p-4 rounded-xl shadow flex flex-col justify-between`;
+          card.innerHTML = `
+            <h2 class="text-lg font-bold mb-2">${facility.이름} (${facility.종류})</h2>
+            <p>수출금액: ${facility.수출금액.toLocaleString()} 천불</p>
+            <p>수입금액: ${facility.수입금액.toLocaleString()} 천불</p>
+            <p class="font-semibold">무역수지: ${facility.무역수지.toLocaleString()} 천불</p>
+            <button class="mt-4 bg-white border rounded p-2 hover:bg-gray-100"
+              onclick="window.open('${facility.링크}', '_blank')">자세히 보기</button>
+          `;
+          container.appendChild(card);
+        });
+    }
+
+    // 엑셀/CSV 업로드 처리
+    document.getElementById("fileInput").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet);
+        facilityData = rows.map(r => ({
+          이름: r["항구공항명"] || r["이름"],
+          종류: r["종류"],
+          수출금액: Number(r["수출금액"]),
+          수입금액: Number(r["수입금액"]),
+          무역수지: Number(r["무역수지"]),
+          링크: "https://unipass.customs.go.kr"
+        }));
+        renderCards();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 초기 렌더링
+    document.getElementById("facilityType").addEventListener("change", renderCards);
+    renderCards();
+  </script>
+</body>
+</html>
